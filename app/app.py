@@ -15,7 +15,7 @@ if st.button("Vygenerovať PDF"):
     template = get_template_path()
     fields = dynamic_fields_from_csv(person_data)
 
-    output = "/data/out/files/zse_prepis.pdf"
+    output = "/data/out/tables/zse_prepis.pdf"
     generate_pdf(fields, template, output)
 
     st.success("PDF bolo úspešne vygenerované ✔")
