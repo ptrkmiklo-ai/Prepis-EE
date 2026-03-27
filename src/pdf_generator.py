@@ -17,7 +17,7 @@ def make_safe_filename(name: str) -> str:
 # --------------------------------------------
 #  CSV loader (správna cesta pre Keboola Data App)
 # --------------------------------------------
-ADR_PATH = "/data/in/tables/adresar.csv"
+ADR_PATH = "/data/in/tables/ADRESAR.csv"
 
 def load_person_from_adresar(person_id: str):
     df = pd.read_csv(ADR_PATH).fillna("")
