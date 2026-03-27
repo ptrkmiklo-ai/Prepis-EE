@@ -8,48 +8,36 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 logging.getLogger("PyPDF2").setLevel(logging.ERROR)
 
-FORBIDDEN_CHARS = '\\/?:*"><|'
+FORBIDDEN_CHARS = '\\/?:*"<>|'
 
 def make_safe_filename(name: str) -> str:
     return "".join("_" if c in FORBIDDEN_CHARS else c for c in name).strip()[:120]
 
 
-
-ADR_PATH = "/data/in/tables/adresar.csv"
+# --------------------------------------------
+#  CSV loader (správna cesta pre Keboola Data App)
+# --------------------------------------------
+ADR_PATH = "/data/in/files/adresar.csv"
 
 def load_person_from_adresar(person_id: str):
-    df = pd.read_csv(ADR_PATH)
+    df = pd.read_csv(ADR_PATH).fillna("")
 
-    # predpokladáme, že máš stĺpec ID
-    row = df[df["ID"] == person_id]
+    # bezpečné porovnanie ID
+    row = df[df["ID"].astype(str) == str(person_id)]
 
     if row.empty:
-        raise ValueError("Osoba sa nenašla v tabuľke Adresar.")
+        raise ValueError("Osoba sa nenašla v adresar.csv")
 
     return row.iloc[0].to_dict()
 
-    
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT *
-        FROM NAJOMCOVIA
-        WHERE ID = %s
-    """, (person_id,))
-    
-    row = cur.fetchone()
-    columns = [col[0] for col in cur.description]
-    conn.close()
-    
-    if not row:
-        raise ValueError("Nájomca neexistuje v Snowflake.")
-    
-    return dict(zip(columns, row))
 
-
+# --------------------------------------------
+#  PDF generator (ZSE-only verzia)
+# --------------------------------------------
 def generate_pdf(person_data: dict, template_path: str, output_pdf: str):
-    """Vytvorenie PDF podľa tvojej šablóny a existujúcej logiky."""
+    """Vytvorenie PDF podľa tvojej ZSE šablóny."""
 
-    # ---- KONŠTANTY (ponechané z tvojho skriptu) ----
+    # ---- KONŠTANTY ----
     constant_fields = {
         "Nazov_Obchodne_meno_1": "Dostupný Domov j.s.a.",
         "Cislo_obchodneho_partnera_1": "5750395461",
@@ -66,64 +54,63 @@ def generate_pdf(person_data: dict, template_path: str, output_pdf: str):
         "Za_Odberatela_Meno_priezvisko_povodneho_odbetratela_13": "Lucia Volleková, splnomocnenec"
     }
 
-    # ---- MAPOVANIE POLÍ Z SNOWFLAKE ----
-    # tu môžeš zachovať tvoje názvy stĺpcov
+    # ---- DYNAMIC FIELDS ----
     dynamic_fields = {
-    # osobné údaje
-    "Meno a priezvisko_5": person_data.get("NAME", ""),
-    "Datum narodenia_5": person_data.get("RC", ""),  # ak RC == dátum narodenia
-    "Telefon_5": person_data.get("MOBIL", ""),
-    "Email_5": person_data.get("EMAIL", ""),
+        "Meno a priezvisko_5": person_data.get("NAME", ""),
+        "Datum narodenia_5": person_data.get("RC", ""),
+        "Telefon_5": person_data.get("MOBIL", ""),
+        "Email_5": person_data.get("EMAIL", ""),
 
-    # adresa trvalého pobytu
-    "Ulica_5": person_data.get("ADDRESS", ""),
-    "Obec_5": person_data.get("CITY", ""),
-    "PSC_5": person_data.get("ZIP", ""),
-    "Ulica_7": person_data.get("ADDRESS", ""),
-    "Obec_7": person_data.get("CITY", ""),
-    "PSC_7": person_data.get("ZIP", ""),
+        "Ulica_5": person_data.get("ADDRESS", ""),
+        "Obec_5": person_data.get("CITY", ""),
+        "PSC_5": person_data.get("ZIP", ""),
 
-    # doklady
-    "Cislo_elektromera_8": person_data.get("OP", ""),
+        "Ulica_7": person_data.get("ADDRESS", ""),
+        "Obec_7": person_data.get("CITY", ""),
+        "PSC_7": person_data.get("ZIP", ""),
 
-    # kombinovaná adresa
-    "Cislo or_5": "",  # tieto polia chcú číslo domu – ak ho vieš extrahovať
-    "Cislo or_3": "",
-}
-    
+        "Cislo_elektromera_8": person_data.get("OP", ""),
 
-    # ---- načítanie šablóny ----
+        "Cislo or_5": "",
+        "Cislo or_3": "",
+    }
+
+    # --------------------------------------------
+    #  GENEROVANIE PDF
+    # --------------------------------------------
+
     reader = PdfReader(template_path)
     writer = PdfWriter()
-    
+
     for page in reader.pages:
         writer.add_page(page)
 
-    # ---- vkladanie do PDF form fields ----
     field_values = {**constant_fields, **dynamic_fields}
 
     for page in writer.pages:
         writer.update_page_form_field_values(page, field_values)
 
-    # ---- uloženie medzisúboru ----
     os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
     with open(output_pdf, "wb") as f:
         writer.write(f)
 
-    # ---- doplnenie „X“ a emailov cez PyMuPDF ----
+    # --------------------------------------------
+    #  DOPÍSANIE X a emailov (PyMuPDF)
+    # --------------------------------------------
+
     doc = fitz.open(output_pdf)
 
     coords_X = {1: [(29, 640), (29, 687)]}
     coords_email = {3: [(248, 187)]}
 
-    for page_num, coords_list in coords_X.items():
+    for page_num, coords in coords_X.items():
         page = doc[page_num - 1]
-        for x, y in coords_list:
+        for x, y in coords:
             page.insert_text((x, y), "X")
 
-    for page_num, coords_list in coords_email.items():
+    for page_num, coords in coords_email.items():
         page = doc[page_num - 1]
-        for x, y in coords_list:
+        for x, y in coords:
             page.insert_text((x, y), "energie@dostupnydomov.sk")
 
     doc.save(output_pdf)
