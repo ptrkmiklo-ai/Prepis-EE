@@ -30,4 +30,4 @@ if st.button("Vygenerovať PDF"):
             file_name="prepis.pdf",
             mime="application/pdf"
         )
-``
+
