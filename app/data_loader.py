@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 def load_adresar():
-    csv_path = "/data/in/files/adresar.csv"
+    csv_path = "/data/in/tables/adresar.csv"
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"adresar.csv neexistuje: {csv_path}")
     return pd.read_csv(csv_path).fillna("")
