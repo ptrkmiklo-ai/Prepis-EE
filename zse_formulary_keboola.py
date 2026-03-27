@@ -3,7 +3,7 @@ import fitz
 import logging
 import warnings
 from PyPDF2 import PdfReader, PdfWriter
-import snowflake.connector
+import pandas as pd
 
 warnings.filterwarnings("ignore")
 logging.getLogger("PyPDF2").setLevel(logging.ERROR)
@@ -14,16 +14,20 @@ def make_safe_filename(name: str) -> str:
     return "".join("_" if c in FORBIDDEN_CHARS else c for c in name).strip()[:120]
 
 
-def load_person_from_snowflake(person_id: str):
-    """Načíta údaje pre konkrétneho nájomcu zo Snowflake tabuľky."""
-    conn = snowflake.connector.connect(
-        user=os.environ["SF_USER"],
-        password=os.environ["SF_PASSWORD"],
-        account=os.environ["SF_ACCOUNT"],
-        warehouse=os.environ["SF_WAREHOUSE"],
-        database=os.environ["SF_DATABASE"],
-        schema=os.environ["SF_SCHEMA"]
-    )
+
+ADR_PATH = "/data/in/tables/adresar.csv"
+
+def load_person_from_adresar(person_id: str):
+    df = pd.read_csv(ADR_PATH)
+
+    # predpokladáme, že máš stĺpec ID
+    row = df[df["ID"] == person_id]
+
+    if row.empty:
+        raise ValueError("Osoba sa nenašla v tabuľke Adresar.")
+
+    return row.iloc[0].to_dict()
+
     
     cur = conn.cursor()
     cur.execute("""
