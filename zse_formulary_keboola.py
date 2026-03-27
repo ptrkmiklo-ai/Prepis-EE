@@ -69,16 +69,28 @@ def generate_pdf(person_data: dict, template_path: str, output_pdf: str):
     # ---- MAPOVANIE POLÍ Z SNOWFLAKE ----
     # tu môžeš zachovať tvoje názvy stĺpcov
     dynamic_fields = {
-        "Meno a priezvisko_5": person_data["MENO"],
-        "Datum narodenia_5": person_data["DATUM_NAR"],
-        "Ulica_5": person_data["ULICA"],
-        "Obec_5": person_data["OBEC"],
-        "PSC_5": person_data["PSC"],
-        "Telefon_5": person_data["TELEFON"],
-        "Email_5": person_data["EMAIL"],
-        "EIC_odberneho_miesta_3": person_data["EIC"],
-        "Cislo miesta spotreby_3": person_data["MIS_SPOTREBY"]
-    }
+    # osobné údaje
+    "Meno a priezvisko_5": person_data.get("NAME", ""),
+    "Datum narodenia_5": person_data.get("RC", ""),  # ak RC == dátum narodenia
+    "Telefon_5": person_data.get("MOBIL", ""),
+    "Email_5": person_data.get("EMAIL", ""),
+
+    # adresa trvalého pobytu
+    "Ulica_5": person_data.get("ADDRESS", ""),
+    "Obec_5": person_data.get("CITY", ""),
+    "PSC_5": person_data.get("ZIP", ""),
+    "Ulica_7": person_data.get("ADDRESS", ""),
+    "Obec_7": person_data.get("CITY", ""),
+    "PSC_7": person_data.get("ZIP", ""),
+
+    # doklady
+    "Cislo_elektromera_8": person_data.get("OP", ""),
+
+    # kombinovaná adresa
+    "Cislo or_5": "",  # tieto polia chcú číslo domu – ak ho vieš extrahovať
+    "Cislo or_3": "",
+}
+    
 
     # ---- načítanie šablóny ----
     reader = PdfReader(template_path)
