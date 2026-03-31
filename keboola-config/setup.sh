@@ -1,4 +1,4 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-cd /src && uv sync
+cd /app && uv sync
